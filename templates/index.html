@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Event Calendar{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="calendar-left">
+            <select id="month-select" class="form-select mb-3" onchange="updateCalendar()">
+                <!-- Options will be populated by JS -->
+            </select>
+        </div>
+        <div class="events-right">
+            <div id="calendar" class="mb-4"></div>
+            <div id="events-list"></div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        // Base URLs for redirection
+        const verifyDocBaseUrl = "{{ url_for('verify_doc', event_id='') }}";
+        const eventFormBaseUrl = "{{ url_for('event_form') }}";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateMonthDropdown();
+            updateCalendar();
+        });
+
+        function populateMonthDropdown() {
+            const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                            'July', 'August', 'September', 'October', 'November', 'December'];
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth();
+            const currentYear = currentDate.getFullYear();
+            let html = '';
+
+            for (let i = 0; i < 3; i++) {
+                let month = (currentMonth + i) % 12;
+                let year = currentYear + Math.floor((currentMonth + i) / 12);
+                html += `<option value="${month + 1},${year}">${months[month]} ${year}</option>`;
+            }
+
+            document.getElementById('month-select').innerHTML = html;
+        }
+
+        function updateCalendar() {
+            const [month, year] = document.getElementById('month-select').value.split(',');
+            generateCalendar(parseInt(month), parseInt(year));
+        }
+
+        function generateCalendar(month, year) {
+            const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                            'July', 'August', 'September', 'October', 'November', 'December'];
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const firstDay = new Date(year, month - 1, 1).getDay();
+
+            let html = `<h2>${months[month - 1]} ${year}</h2><table><tr>`;
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            days.forEach(day => html += `<th>${day}</th>`);
+            html += '</tr><tr>';
+
+            for (let i = 0; i < firstDay; i++) {
+                html += '<td></td>';
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                if ((day + firstDay - 1) % 7 === 0 && day !== 1) {
+                    html += '</tr><tr>';
+                }
+                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                html += `<td class="day" data-date="${dateStr}">${day}</td>`;
+            }
+
+            html += '</tr></table>';
+            document.getElementById('calendar').innerHTML = html;
+
+            fetch(`/get_events?month=${month}&year=${year}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to fetch events');
+                    return response.json();
+                })
+                .then(events => {
+                    console.log('Events fetched:', events); // Debug
+                    const eventList = document.getElementById('events-list');
+                    let eventHtml = '<h3>Events</h3>';
+                    const dayCells = document.querySelectorAll('.day');
+
+                    const eventsByDate = {};
+                    events.forEach(event => {
+                        if (!eventsByDate[event.date]) {
+                            eventsByDate[event.date] = [];
+                        }
+                        eventsByDate[event.date].push(event);
+                    });
+
+                    dayCells.forEach(cell => {
+                        const date = cell.dataset.date;
+                        const dayEvents = eventsByDate[date] || [];
+                        if (dayEvents.length > 0) {
+                            cell.classList.add('has-event');
+                            let eventTitles = '';
+                            dayEvents.forEach(event => {
+                                const eventLink = document.createElement('a');
+                                eventLink.href = '#';
+                                eventLink.textContent = event.title;
+                                eventLink.className = 'event-title';
+                                eventLink.onclick = (e) => {
+                                    e.preventDefault();
+                                    {% if session.role != 'admin' %}
+                                        window.location.href = verifyDocBaseUrl + event._id;
+                                    {% else %}
+                                        window.location.href = `${eventFormBaseUrl}?date=${date}`;
+                                    {% endif %}
+                                };
+                                cell.appendChild(document.createElement('br'));
+                                cell.appendChild(eventLink);
+                            });
+                        } else {
+                            cell.onclick = () => {
+                                {% if session.role != 'admin' %}
+                                    alert('No event found for this date.');
+                                {% else %}
+                                    window.location.href = `${eventFormBaseUrl}?date=${date}`;
+                                {% endif %}
+                            };
+                        }
+                    });
+
+                    for (let date in eventsByDate) {
+                        eventsByDate[date].forEach(event => {
+                            eventHtml += `<div class="event-item">${event.date}: ${event.title}</div>`;
+                        });
+                    }
+                    eventList.innerHTML = eventHtml;
+                })
+                .catch(error => {
+                    console.error('Error fetching events:', error);
+                    document.getElementById('events-list').innerHTML = 'Error loading events.';
+                });
+        }
+    </script>
+{% endblock %}
