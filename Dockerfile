@@ -5,7 +5,7 @@ ADD . /code
 #RUN pip3 install --upgrade pip3
 RUN pip3 install -r requirements.txt
 COPY . /code
-CMD ["python", "main.py"]
+CMD ["python", "test.py"]
 
 
 
