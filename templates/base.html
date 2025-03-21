@@ -22,6 +22,20 @@
             <img src="{{ url_for('static', filename='images/left_icon.jpeg') }}" alt="Logo" class="img-fluid" style="max-height: 90px;">
         </div>
     </div>
+<div>
+    <nav aria-label="breadcrumb" class="ms-3">
+        <ol class="breadcrumb bg-transparent text-white mb-0 d-flex justify-content-between">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('index') }}" class="text-white text-decoration-none">Home</a>
+            </li>
+            {% if session.logged_in %}
+                <li class="breadcrumb-item ms-auto">
+                    <a href="{{ url_for('logout') }}" class="text-white text-decoration-none">Logout</a>
+                </li>
+            {% endif %}
+        </ol>
+    </nav>
+</div>
 
 </header>
 
