@@ -1,0 +1,38 @@
+services:
+  mongo:
+    image: mongo:6.0
+    container_name: mongodb
+    restart: always
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: cda123
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - mongo-network
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    restart: always
+    ports:
+      - 18002:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: cda123
+      ME_CONFIG_MONGODB_URL: mongodb://root:cda123@mongodb:27017/
+      ME_CONFIG_BASICAUTH: "false"  # Disable basic auth (optional)
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"  # Enable admin features for server stats
+    depends_on:
+      - mongo
+    networks:
+      - mongo-network
+
+networks:
+  mongo-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
